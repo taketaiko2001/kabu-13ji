@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1f5f5b">
+<meta name="robots" content="noindex">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-title" content="13時の仮想売買">
+<title>13時の仮想売買</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=BIZ+UDPGothic:wght@400;700&family=IBM+Plex+Mono:wght@400;500;600&family=Zen+Kaku+Gothic+New:wght@700;900&display=swap">
+<style>
+/* Layout: 状態の帯 → 成績の数字 → 残高の推移 → 毎日の記録(月ごと) → ルール。買い残減少スクリーナーと同じ書体・配色の系統 */
+:root{
+  --bg:#f2f4f5; --surface:#ffffff; --surface-2:#e9eeef; --ink:#13202a; --ink-2:#465864; --ink-3:#6b7b86; --line:#d6dde1;
+  --accent:#1f5f5b; --accent-ink:#ffffff; --accent-soft:#dcecea;
+  --good:#1a7f37; --good-soft:#dff2e5; --bad:#c0392b; --bad-soft:#f9e3df; --warn:#8a5d00; --warn-soft:#f8ecd2;
+  --series:#2a78d6; --series-soft:rgba(42,120,214,.12); --base:#9aa7b1;
+  --f-display:"Zen Kaku Gothic New","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;
+  --f-body:"BIZ UDPGothic","Hiragino Kaku Gothic ProN","Yu Gothic","Meiryo",sans-serif;
+  --f-num:"IBM Plex Mono","SFMono-Regular",Consolas,monospace;
+  --r:10px; color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0f1519; --surface:#162026; --surface-2:#1d2930; --ink:#e7eef2; --ink-2:#a9b8c1; --ink-3:#86949e; --line:#2b3840;
+    --accent:#6fc2b8; --accent-ink:#0f1519; --accent-soft:#17312f;
+    --good:#4cc070; --good-soft:#15301f; --bad:#ef6b5e; --bad-soft:#3b1d1a; --warn:#e2ab3f; --warn-soft:#352812;
+    --series:#3987e5; --series-soft:rgba(57,135,229,.16); --base:#5d6b75; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0f1519; --surface:#162026; --surface-2:#1d2930; --ink:#e7eef2; --ink-2:#a9b8c1; --ink-3:#86949e; --line:#2b3840;
+  --accent:#6fc2b8; --accent-ink:#0f1519; --accent-soft:#17312f;
+  --good:#4cc070; --good-soft:#15301f; --bad:#ef6b5e; --bad-soft:#3b1d1a; --warn:#e2ab3f; --warn-soft:#352812;
+  --series:#3987e5; --series-soft:rgba(57,135,229,.16); --base:#5d6b75; color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.7;margin:0;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+[hidden]{display:none!important}
+.wrap{max-width:760px;margin:0 auto;padding-inline:16px;padding-block:20px 56px;display:grid;gap:22px}
+h1,h2{font-family:var(--f-display);text-wrap:balance;margin:0;line-height:1.3}
+h1{font-size:clamp(26px,6vw,34px);font-weight:900;letter-spacing:.01em}
+h2{font-size:19px;font-weight:700}
+p{margin:0}
+.num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
+.muted{color:var(--ink-3)}
+.eyebrow{font-size:12px;letter-spacing:.08em;color:var(--accent);font-weight:700}
+header{display:grid;gap:8px}
+header .lead{color:var(--ink-2);font-size:14.5px}
+.sync{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;font-size:13px;color:var(--ink-3)}
+.sync b{color:var(--ink-2);font-weight:700}
+.btn{font:inherit;font-size:13px;font-weight:700;border:1px solid var(--accent);color:var(--accent);background:var(--surface);border-radius:999px;padding:4px 14px;cursor:pointer}
+.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.err{background:var(--bad-soft);color:var(--bad);border-radius:var(--r);padding:12px 14px;font-size:14px}
+.err a{color:inherit}
+.warnbox{background:var(--warn-soft);color:var(--warn);border-radius:var(--r);padding:12px 14px;font-size:14px}
+
+.kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));border:1px solid var(--line);border-radius:var(--r);background:var(--surface);overflow:hidden}
+.kpis>div{padding:14px 16px;display:grid;gap:2px;min-width:0}
+.kpis>div:nth-child(odd){border-right:1px solid var(--line)}
+.kpis>div:nth-child(-n+2){border-bottom:1px solid var(--line)}
+.kpis .lab{font-size:12px;color:var(--ink-3);font-weight:700;letter-spacing:.04em}
+.kpis .val{font-family:var(--f-num);font-size:clamp(19px,5.4vw,24px);font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kpis .sub{font-size:12.5px;color:var(--ink-2)}
+.pos{color:var(--good)} .neg{color:var(--bad)}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px;display:grid;gap:10px}
+.card .head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
+.chart{position:relative;touch-action:pan-y}
+.chart svg{display:block;width:100%;height:auto;overflow:visible}
+.chart .grid{stroke:var(--line);stroke-width:1}
+.chart .base{stroke:var(--base);stroke-width:1;stroke-dasharray:4 4}
+.chart .ax{fill:var(--ink-3);font-family:var(--f-num);font-size:11px}
+.chart .line{fill:none;stroke:var(--series);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+.chart .area{fill:var(--series-soft);stroke:none}
+.chart .dot{fill:var(--series);stroke:var(--surface);stroke-width:2}
+.chart .cross{stroke:var(--ink-3);stroke-width:1}
+.tip{position:absolute;top:0;pointer-events:none;background:var(--ink);color:var(--bg);border-radius:8px;padding:6px 10px;font-size:12.5px;line-height:1.5;white-space:nowrap;transform:translateX(-50%)}
+.tip .num{font-weight:600}
+.empty{color:var(--ink-3);font-size:14px;padding:18px 0;text-align:center}
+
+.month{display:grid;gap:10px}
+.month>.mh{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap;padding:0 2px}
+.month>.mh h2{font-size:17px}
+.month>.mh .s{font-size:13px;color:var(--ink-2)}
+.days{display:grid;gap:8px}
+.day{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;display:grid;gap:6px}
+.day.skip{background:transparent;border-style:dashed;padding:9px 14px;gap:2px}
+.day .top{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.day .date{font-weight:700;font-size:15px;min-width:5.6em}
+.badge{font-size:12px;font-weight:700;border-radius:999px;padding:1px 10px;border:1px solid var(--line);color:var(--ink-2);background:var(--surface-2)}
+.badge.buy{background:var(--accent-soft);color:var(--accent);border-color:transparent}
+.day .pnl{margin-left:auto;font-family:var(--f-num);font-size:18px;font-weight:600;font-variant-numeric:tabular-nums}
+.day.skip .pnl{font-size:14px;color:var(--ink-3);font-weight:500}
+.day .trade{font-size:14px;color:var(--ink)}
+.day .trade .num{font-size:13.5px}
+.day .meta{font-size:12.5px;color:var(--ink-3);display:flex;flex-wrap:wrap;gap:2px 14px}
+.day .memo{font-size:12.5px;color:var(--warn)}
+
+details.rules{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px 16px}
+details.rules summary{cursor:pointer;font-weight:700;font-family:var(--f-display)}
+details.rules ul{margin:10px 0 2px;padding-left:1.2em;color:var(--ink-2);font-size:14px;display:grid;gap:4px}
+footer{font-size:12.5px;color:var(--ink-3);display:grid;gap:4px}
+footer a{color:var(--ink-2)}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <header>
+    <p class="eyebrow">1570 / 1357 ・ 13時ルール</p>
+    <h1>仮想売買の記録</h1>
+    <p class="lead">所持金100万円で、13時の判定どおりに14:00に買い15:24に売った場合の記録です。PCが毎営業日16:00ごろに自動で書き足します。</p>
+    <div class="sync">
+      <span>記録の更新 <b id="updated">—</b></span>
+      <span id="synced">読み込み中…</span>
+      <button class="btn" id="reload" type="button">更新</button>
+    </div>
+  </header>
+
+  <div class="err" id="err" hidden></div>
+  <div class="warnbox" id="stale" hidden></div>
+
+  <section class="kpis" id="kpis" aria-label="成績">
+    <div><span class="lab">残高</span><span class="val" id="k-bal">—</span><span class="sub" id="k-bal-sub">&nbsp;</span></div>
+    <div><span class="lab">通算損益</span><span class="val" id="k-pnl">—</span><span class="sub" id="k-pnl-sub">&nbsp;</span></div>
+    <div><span class="lab">売買した日</span><span class="val" id="k-n">—</span><span class="sub" id="k-n-sub">&nbsp;</span></div>
+    <div><span class="lab">参考：損切り−1.5%あり</span><span class="val" id="k-stop">—</span><span class="sub">通算損益</span></div>
+  </section>
+
+  <section class="card" aria-labelledby="h-chart">
+    <div class="head"><h2 id="h-chart">残高の推移</h2><span class="muted" style="font-size:12.5px">点線＝元金100万円</span></div>
+    <div class="chart" id="chart"></div>
+  </section>
+
+  <section id="list" style="display:grid;gap:22px" aria-label="毎日の記録"></section>
+
+  <details class="rules">
+    <summary>売買のルール</summary>
+    <ul>
+      <li>13:00の日経平均（前日比）で判定。13時の値が取れなかった日は、その前の最新の値（速報）で判定します。</li>
+      <li><b>1570</b>：13時に前日比 −1%以下。ただし14:00に13時からさらに −0.5%以上下げていたら見送り。</li>
+      <li><b>1357</b>：13時に前日比 +0.75%以上。ただし前日に −1%以上下げた翌日は見送り。</li>
+      <li>14:00の1分足の始値で、残高で買えるだけ買い（1口単位）、15:24の1分足の始値で売ります。</li>
+      <li>本記録は損切りなし。「損切り−1.5%あり」は、買値から−1.5%に逆指値を入れていた場合の参考値です。</li>
+      <li>手数料・税は含みません。株価は Yahoo の1分足を使っています。</li>
+    </ul>
+  </details>
+
+  <footer>
+    <p>この記録はPCのプログラムが毎日自動で付けています（13:00の判定・16:00の精算）。PCの電源が切れていた日は「記録なし」になります。</p>
+    <p><a id="src" href="https://github.com/taketaiko2001/kabu-13ji/blob/main/docs/data/ledger.json">元データ（GitHub）</a></p>
+  </footer>
+</main>
+
+<script>
+const RAW = "https://raw.githubusercontent.com/taketaiko2001/kabu-13ji/main/docs/data/ledger.json";
+const WD = ["日","月","火","水","木","金","土"];
+const $ = id => document.getElementById(id);
+const yen = v => Math.round(v).toLocaleString("ja-JP") + "円";
+const signed = v => (v > 0 ? "+" : v < 0 ? "−" : "±") + Math.abs(Math.round(v)).toLocaleString("ja-JP") + "円";
+const cls = v => v > 0 ? "pos" : v < 0 ? "neg" : "";
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+function ymd(s){ const [y,m,d] = s.split("-").map(Number); return {y, m, d, wd: WD[new Date(Date.UTC(y, m-1, d)).getUTCDay()]}; }
+const md = s => { const t = ymd(s); return `${t.m}/${t.d}(${t.wd})`; };
+const traded = r => String(r.trade).includes("口");
+
+async function fetchJson(){
+  const q = "?_=" + Date.now();
+  try {
+    const r = await fetch(RAW + q, {cache: "no-store"});
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    return await r.json();
+  } catch (e) {
+    const r = await fetch("data/ledger.json" + q, {cache: "no-store"});   // GitHub Pages 側のコピー
+    if (!r.ok) throw e;
+    return await r.json();
+  }
+}
+
+async function load(){
+  $("synced").textContent = "読み込み中…";
+  try {
+    const data = await fetchJson();
+    render(data);
+    $("err").hidden = true;
+    const n = new Date();
+    $("synced").textContent = `読み込み ${n.getHours()}:${String(n.getMinutes()).padStart(2,"0")}`;
+  } catch (e) {
+    $("err").hidden = false;
+    $("err").innerHTML = `記録を読み込めませんでした（${esc(e.message)}）。電波の良い所で「更新」を押すか、<a href="${$("src").href}">GitHub の元データ</a>を開いてください。`;
+    $("synced").textContent = "読み込み失敗";
+  }
+}
+
+function render(data){
+  const rows = data.rows || [], cap = data.capital || 1000000;
+  const [ud, ut] = (data.updated || "").split(" ");
+  $("updated").textContent = ud ? `${md(ud)} ${ut}` : "—";
+
+  // 予定の精算(次の営業日の16時)を過ぎても届いていなければ知らせる
+  if (data.next){
+    const t = ymd(data.next), due = Date.UTC(t.y, t.m-1, t.d, 17-9, 0);
+    $("stale").hidden = Date.now() < due;
+    $("stale").textContent = `${md(data.next)}の記録がまだ届いていません。16:00にPCが止まっていた可能性があります（次にPCが起きたときに書き足されます）。`;
+  }
+
+  const last = rows.length ? rows[rows.length-1].balance : cap;
+  const tr = rows.filter(traded), win = tr.filter(r => r.pnl > 0).length, lose = tr.filter(r => r.pnl < 0).length;
+  const total = last - cap, stopTotal = rows.reduce((a, r) => a + (Number(r.stop_pnl) || 0), 0);
+  $("k-bal").textContent = yen(last);
+  $("k-bal-sub").textContent = rows.length ? `${md(data.start)}から ${rows.length}営業日` : "まだ記録がありません";
+  $("k-pnl").textContent = signed(total); $("k-pnl").className = "val " + cls(total);
+  $("k-pnl-sub").textContent = `元金比 ${(total / cap * 100 >= 0 ? "+" : "−")}${Math.abs(total / cap * 100).toFixed(2)}%`;
+  $("k-n").textContent = `${tr.length}回`;
+  $("k-n-sub").textContent = tr.length ? `勝ち${win}・負け${lose}${tr.length - win - lose ? "・引き分け" + (tr.length - win - lose) : ""}（勝率${Math.round(win / tr.length * 100)}%）` : "見送り" + rows.length + "日";
+  $("k-stop").textContent = signed(stopTotal); $("k-stop").className = "val " + cls(stopTotal);
+
+  drawChart(rows, cap, data.start);
+  renderList(rows);
+}
+
+function renderList(rows){
+  const box = $("list");
+  if (!rows.length){ box.innerHTML = `<div class="card"><p class="empty">まだ記録がありません。最初の記録は営業日の16:00ごろに付きます。</p></div>`; return; }
+  const months = new Map();
+  for (const r of rows.slice().reverse()){
+    const k = r.date.slice(0, 7);
+    if (!months.has(k)) months.set(k, []);
+    months.get(k).push(r);
+  }
+  box.innerHTML = [...months].map(([k, rs]) => {
+    const t = rs.filter(traded), sum = rs.reduce((a, r) => a + (Number(r.pnl) || 0), 0);
+    const [y, m] = k.split("-").map(Number);
+    return `<div class="month">
+      <div class="mh"><h2>${y}年${m}月</h2><span class="s">売買${t.length}回 ・ <span class="num ${cls(sum)}">${signed(sum)}</span></span></div>
+      <div class="days">${rs.map(dayCard).join("")}</div></div>`;
+  }).join("");
+}
+
+function dayCard(r){
+  const memo = r.memo ? `<p class="memo">${esc(r.memo)}</p>` : "";
+  if (!traded(r)){
+    const label = r.signal === "記録なし" ? "記録なし" : r.signal === "1570" ? "1570候補→見送り" : "見送り";
+    const why = r.final || r.early ? `<p class="meta">${esc(r.final || r.early)}${r.signal && r.signal.includes("前日下落") ? "（前日下落のため）" : ""}</p>` : "";
+    return `<article class="day skip"><div class="top"><span class="date">${md(r.date)}</span><span class="badge">${label}</span><span class="pnl">±0円</span></div>${why}${memo}</article>`;
+  }
+  const m = String(r.trade).match(/^(\d{4}) (\d+)口 (\d\d:\d\d)買い([\d,]+)円 → (\d\d:\d\d)売り([\d,]+)円/);
+  const trade = m
+    ? `${m[2]}口 ・ 買い <span class="num">${m[4]}</span>円 → 売り <span class="num">${m[6]}</span>円`
+    : esc(r.trade);
+  const stop = Number(r.stop_pnl) !== Number(r.pnl) ? `<span>損切りありなら <span class="num">${signed(r.stop_pnl)}</span></span>` : "";
+  return `<article class="day">
+    <div class="top"><span class="date">${md(r.date)}</span><span class="badge buy">${esc(r.signal)} 買い</span>
+      <span class="pnl ${cls(r.pnl)}">${signed(r.pnl)}</span></div>
+    <p class="trade">${trade}</p>
+    <p class="meta"><span>${esc(r.final || r.early)}</span><span>残高 <span class="num">${yen(r.balance)}</span></span><span>${r.pct >= 0 ? "+" : "−"}${Math.abs(r.pct).toFixed(2)}%</span>${stop}</p>
+    ${memo}</article>`;
+}
+
+function niceStep(span, n){
+  const raw = span / n, p = Math.pow(10, Math.floor(Math.log10(raw)));
+  return [1, 2, 2.5, 5, 10].map(f => f * p).find(s => s >= raw) || 10 * p;
+}
+
+function drawChart(rows, cap, start){
+  const box = $("chart");
+  if (!rows.length){ box.innerHTML = `<p class="empty">記録が付くと、ここに残高の線が出ます。</p>`; return; }
+  const pts = [{date: null, label: "開始", balance: cap, pnl: 0}, ...rows.map(r => ({date: r.date, label: md(r.date), balance: r.balance, pnl: r.pnl, t: traded(r)}))];
+  const W = 640, H = 240, L = 56, R = 12, T = 14, B = 26;
+  let lo = Math.min(...pts.map(p => p.balance)), hi = Math.max(...pts.map(p => p.balance));
+  if (hi - lo < 4000){ const c = (hi + lo) / 2; lo = c - 2000; hi = c + 2000; }
+  const step = niceStep(hi - lo, 4);
+  lo = Math.floor(lo / step) * step; hi = Math.ceil(hi / step) * step;
+  const x = i => L + (pts.length === 1 ? 0 : i * (W - L - R) / (pts.length - 1));
+  const y = v => T + (hi - v) * (H - T - B) / (hi - lo);
+  const fmtY = v => (v / 10000).toLocaleString("ja-JP", {maximumFractionDigits: step < 1000 ? 2 : step < 10000 ? 1 : 0}) + "万";
+  let g = "";
+  for (let v = lo; v <= hi + 1e-6; v += step){
+    g += `<line class="grid" x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}"/><text class="ax" x="${L - 6}" y="${y(v) + 4}" text-anchor="end">${fmtY(v)}</text>`;
+  }
+  const base = cap >= lo && cap <= hi ? `<line class="base" x1="${L}" x2="${W - R}" y1="${y(cap)}" y2="${y(cap)}"/>` : "";
+  const d = pts.map((p, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(p.balance).toFixed(1)}`).join("");
+  const area = `${d}L${x(pts.length - 1).toFixed(1)},${H - B}L${L},${H - B}Z`;
+  const every = Math.max(1, Math.ceil(pts.length / 6));
+  let xl = "";
+  pts.forEach((p, i) => { if (i % every === 0 || i === pts.length - 1) xl += `<text class="ax" x="${x(i)}" y="${H - 6}" text-anchor="${i === 0 ? "start" : i === pts.length - 1 ? "end" : "middle"}">${p.date ? p.label.replace(/\(.\)/, "") : "開始"}</text>`; });
+  const lastI = pts.length - 1;
+  box.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="残高の推移。最新 ${yen(pts[lastI].balance)}">
+    ${g}${base}<path class="area" d="${area}"/><path class="line" d="${d}"/>
+    <circle class="dot" cx="${x(lastI)}" cy="${y(pts[lastI].balance)}" r="4"/>
+    <g id="hover" visibility="hidden"><line class="cross" id="hx" y1="${T}" y2="${H - B}"/><circle class="dot" id="hd" r="5"/></g>
+    <rect x="${L}" y="0" width="${W - L - R}" height="${H}" fill="transparent" id="hit"/></svg>
+    <div class="tip" id="tip" hidden></div>`;
+  const svg = box.querySelector("svg"), hit = box.querySelector("#hit");
+  const move = ev => {
+    const rc = svg.getBoundingClientRect(), sx = (ev.clientX - rc.left) * W / rc.width;
+    let i = 0, best = Infinity;
+    pts.forEach((_, j) => { const dd = Math.abs(x(j) - sx); if (dd < best){ best = dd; i = j; } });
+    const p = pts[i];
+    box.querySelector("#hover").setAttribute("visibility", "visible");
+    const hx = box.querySelector("#hx"); hx.setAttribute("x1", x(i)); hx.setAttribute("x2", x(i));
+    const hd = box.querySelector("#hd"); hd.setAttribute("cx", x(i)); hd.setAttribute("cy", y(p.balance));
+    const tip = $("tip"); tip.hidden = false;
+    tip.innerHTML = p.date
+      ? `${p.label}<br>残高 <span class="num">${yen(p.balance)}</span><br>${p.t ? "当日 <span class=\"num\">" + signed(p.pnl) + "</span>" : "見送り"}`
+      : `開始（${md(start)}）<br>元金 <span class="num">${yen(p.balance)}</span>`;
+    const px = x(i) * rc.width / W, half = tip.offsetWidth / 2;
+    tip.style.left = Math.min(Math.max(px, half), rc.width - half) + "px";
+  };
+  const leave = () => { box.querySelector("#hover").setAttribute("visibility", "hidden"); $("tip").hidden = true; };
+  hit.addEventListener("pointermove", move);
+  hit.addEventListener("pointerdown", move);
+  hit.addEventListener("pointerleave", leave);
+}
+
+$("reload").addEventListener("click", load);
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") load(); });
+setInterval(load, 5 * 60 * 1000);
+load();
+</script>
+</body>
+</html>
