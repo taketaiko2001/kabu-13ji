@@ -294,7 +294,7 @@ function drawChart(rows, cap, start){
   pts.forEach((p, i) => { if (i % every === 0 || i === pts.length - 1) xl += `<text class="ax" x="${x(i)}" y="${H - 6}" text-anchor="${i === 0 ? "start" : i === pts.length - 1 ? "end" : "middle"}">${p.date ? p.label.replace(/\(.\)/, "") : "開始"}</text>`; });
   const lastI = pts.length - 1;
   box.innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="残高の推移。最新 ${yen(pts[lastI].balance)}">
-    ${g}${base}<path class="area" d="${area}"/><path class="line" d="${d}"/>
+    ${g}${base}${xl}<path class="area" d="${area}"/><path class="line" d="${d}"/>
     <circle class="dot" cx="${x(lastI)}" cy="${y(pts[lastI].balance)}" r="4"/>
     <g id="hover" visibility="hidden"><line class="cross" id="hx" y1="${T}" y2="${H - B}"/><circle class="dot" id="hd" r="5"/></g>
     <rect x="${L}" y="0" width="${W - L - R}" height="${H}" fill="transparent" id="hit"/></svg>
