@@ -216,7 +216,7 @@ function render(data){
   $("k-bal").textContent = yen(last);
   $("k-bal-sub").textContent = rows.length ? `${md(data.start)}から ${rows.length}営業日` : "まだ記録がありません";
   $("k-pnl").textContent = signed(total); $("k-pnl").className = "val " + cls(total);
-  $("k-pnl-sub").textContent = `元金比 ${(total / cap * 100 >= 0 ? "+" : "−")}${Math.abs(total / cap * 100).toFixed(2)}%`;
+  $("k-pnl-sub").textContent = `元金比 ${(total / cap * 100 >= 0 ? "+" : "-")}${Math.abs(total / cap * 100).toFixed(2)}%`;
   $("k-n").textContent = `${tr.length}回`;
   $("k-n-sub").textContent = tr.length ? `勝ち${win}・負け${lose}${tr.length - win - lose ? "・引き分け" + (tr.length - win - lose) : ""}（勝率${Math.round(win / tr.length * 100)}%）` : "見送り" + rows.length + "日";
   $("k-stop").textContent = signed(stopTotal); $("k-stop").className = "val " + cls(stopTotal);
@@ -259,7 +259,7 @@ function dayCard(r){
     <div class="top"><span class="date">${md(r.date)}</span><span class="badge buy">${esc(r.signal)} 買い</span>
       <span class="pnl ${cls(r.pnl)}">${signed(r.pnl)}</span></div>
     <p class="trade">${trade}</p>
-    <p class="meta"><span>${esc(r.final || r.early)}</span><span>残高 <span class="num">${yen(r.balance)}</span></span><span>${r.pct >= 0 ? "+" : "−"}${Math.abs(r.pct).toFixed(2)}%</span>${stop}</p>
+    <p class="meta"><span>${esc(r.final || r.early)}</span><span>残高 <span class="num">${yen(r.balance)}</span></span><span>${r.pct >= 0 ? "+" : "-"}${Math.abs(r.pct).toFixed(2)}%</span>${stop}</p>
     ${memo}</article>`;
 }
 
@@ -268,11 +268,13 @@ function niceStep(span, n){
   return [1, 2, 2.5, 5, 10].map(f => f * p).find(s => s >= raw) || 10 * p;
 }
 
+let lastChart = null;
 function drawChart(rows, cap, start){
+  lastChart = [rows, cap, start];
   const box = $("chart");
   if (!rows.length){ box.innerHTML = `<p class="empty">記録が付くと、ここに残高の線が出ます。</p>`; return; }
   const pts = [{date: null, label: "開始", balance: cap, pnl: 0}, ...rows.map(r => ({date: r.date, label: md(r.date), balance: r.balance, pnl: r.pnl, t: traded(r)}))];
-  const W = 640, H = 240, L = 56, R = 12, T = 14, B = 26;
+  const W = Math.max(280, Math.round(box.clientWidth || 340)), H = Math.round(Math.min(260, Math.max(190, W * 0.55))), L = 52, R = 10, T = 14, B = 26;   // 画面の幅に合わせて描く(文字が縮まない)
   let lo = Math.min(...pts.map(p => p.balance)), hi = Math.max(...pts.map(p => p.balance));
   if (hi - lo < 4000){ const c = (hi + lo) / 2; lo = c - 2000; hi = c + 2000; }
   const step = niceStep(hi - lo, 4);
@@ -320,6 +322,7 @@ function drawChart(rows, cap, start){
 }
 
 $("reload").addEventListener("click", load);
+let rz; window.addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(() => lastChart && drawChart(...lastChart), 150); });
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") load(); });
 setInterval(load, 5 * 60 * 1000);
 load();
