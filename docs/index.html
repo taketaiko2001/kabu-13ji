@@ -145,6 +145,7 @@ footer a{color:var(--ink-2)}
     <ul>
       <li>13:00の日経平均（前日比）で判定。13時の値が取れなかった日は、その前の最新の値（速報）で判定します。</li>
       <li><b>1570</b>：13時に前日比 −1%以下。ただし14:00に13時からさらに −0.5%以上下げていたら見送り。</li>
+      <li><b>暴落日</b>：13時に前日比 −4%以下の日は1570を買いません（2026/10/28から）。</li>
       <li><b>1357</b>：13時に前日比 +0.75%以上。ただし前日に −1%以上下げた翌日は見送り。</li>
       <li>14:00の1分足の始値で、残高で買えるだけ買い（1口単位）、15:24の1分足の始値で売ります。</li>
       <li>本記録は損切りなし。「損切り−1.5%あり」は、買値から−1.5%に逆指値を入れていた場合の参考値です。</li>
@@ -246,7 +247,7 @@ function renderList(rows){
 function dayCard(r){
   const memo = r.memo ? `<p class="memo">${esc(r.memo)}</p>` : "";
   if (!traded(r)){
-    const sig = String(r.signal ?? ""), label = sig === "記録なし" ? "記録なし" : sig === "1570" ? "1570候補→見送り" : "見送り";
+    const sig = String(r.signal ?? ""), label = sig === "記録なし" ? "記録なし" : sig.includes("暴落") ? "見送り（暴落日）" : sig === "1570" ? "1570候補→見送り" : "見送り";
     const why = r.final || r.early ? `<p class="meta">${esc(r.final || r.early)}${sig.includes("前日下落") ? "（前日下落のため）" : ""}</p>` : "";
     return `<article class="day skip"><div class="top"><span class="date">${md(r.date)}</span><span class="badge">${label}</span><span class="pnl">±0円</span></div>${why}${memo}</article>`;
   }
